@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PJOK Challenger: Tactical Arena</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
+        }
+        
+        /* Animasi transisi leaderboard */
+        .list-move {
+            transition: transform 0.5s ease, opacity 0.5s ease;
+        }
+        
+        /* Animasi Toast Notifikasi */
+        @keyframes slideDown {
+            from { transform: translateY(-100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .toast-enter {
+            animation: slideDown 0.3s ease-out forwards;
+        }
+        
+        /* Efek kaca untuk header */
+        .glass-header {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        /* Gradien khusus card misi */
+        .mission-card {
+            background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+        }
+    </style>
+</head>
+<body class="text-slate-800 pb-20 md:pb-8">
+
+    <!-- Toast Notification (Pesan Sukses) -->
+    <div id="toast" class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-emerald-500 text-white px-6 py-3 rounded-full shadow-lg font-semibold flex items-center gap-2 z-50 hidden">
+        <i class="ph ph-check-circle text-xl"></i>
+        <span id="toastMessage">Poin ditambahkan!</span>
+    </div>
+
+    <header class="glass-header sticky top-0 z-40 border-b border-slate-200 shadow-sm">
+        <div class="max-w-4xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <img src="https://placehold.co/100x100/4f46e5/ffffff?text=Logo+SD" alt="Logo Sekolah" class="w-10 h-10 rounded-full object-cover border-2 border-indigo-200 shadow-sm">
+                <div>
+                    <h1 class="text-xl font-bold text-slate-900 leading-tight">PJOK Challenger</h1>
+                    <p class="text-xs text-slate-500 font-semibold uppercase tracking-wider">Tactical Arena - SD Bintaro</p>
+                    <!-- Indikator Sinkronisasi Cloud -->
+                    <div id="syncStatus" class="flex items-center gap-1 mt-1 text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full w-max">
+                        <i class="ph-fill ph-plugs"></i> Mode Lokal
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Dropdown Pemilih Materi -->
+            <div class="relative">
+                <select id="materiSelector" class="appearance-none bg-white border border-slate-300 text-slate-700 py-2 pl-4 pr-10 rounded-full font-semibold text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer shadow-sm">
+                    <!-- Opsi akan diisi oleh JS -->
+                </select>
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500">
+                    <i class="ph ph-caret-down"></i>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 mt-6 flex flex-col md:flex-row gap-6">
+        
+        <!-- Kolom Kiri: Misi & Video -->
+        <div class="w-full md:w-5/12 flex flex-col gap-6">
+            
+            <!-- Card Misi Aktif -->
+            <div class="mission-card rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
+                <div class="absolute -right-10 -top-10 opacity-10">
+                    <i class="ph-fill ph-target text-9xl"></i>
+                </div>
+                <div class="relative z-10">
+                    <span class="bg-white/20 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">Misi Minggu Ini</span>
+                    <h2 id="missionTitle" class="text-2xl font-bold mt-3 mb-2">Memuat Misi...</h2>
+                    <p id="missionDesc" class="text-indigo-100 text-sm leading-relaxed mb-4">
+                        Tunggu sebentar, sedang mengambil data misi dari server...
+                    </p>
+                    
+                    <div class="bg-white/10 rounded-xl p-3 border border-white/20 flex items-start gap-3 mt-4">
+                        <i class="ph-fill ph-lightbulb text-yellow-300 text-xl shrink-0 mt-0.5"></i>
+                        <div>
+                            <h3 class="font-semibold text-sm text-yellow-100">Fokus Taktik (TGFU)</h3>
+                            <p id="tacticFocus" class="text-xs text-white mt-1 opacity-90"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card Video Referensi -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="p-4 border-b border-slate-100 flex justify-between items-center">
+                    <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                        <i class="ph-fill ph-video-camera text-indigo-500 text-xl"></i>
+                        Video Analisis Taktik
+                    </h3>
+                </div>
+                <!-- Container Video Iframe (Responsif) -->
+                <div class="relative bg-slate-900 aspect-video flex items-center justify-center w-full">
+                    <iframe id="videoPlayer" class="absolute inset-0 w-full h-full" src="https://www.youtube.com/embed/512Y0z4Pp2w" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+                </div>
+                <div class="p-4 bg-slate-50 text-xs text-slate-500 text-center font-medium">
+                    Tonton video di atas dan diskusikan taktik bersama tim kalian sebelum bermain!
+                </div>
+            </div>
+
+            <!-- Card Refleksi (Feedback) -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-teal-50">
+                    <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                        <i class="ph-fill ph-chats text-teal-600 text-xl"></i>
+                        Ruang Diskusi & Refleksi
+                    </h3>
+                </div>
+                <div class="p-5">
+                    <p class="text-xs text-slate-500 font-bold uppercase tracking-wider mb-2">Pertanyaan Taktis</p>
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4 shadow-inner relative">
+                        <i class="ph-fill ph-quotes text-slate-200 text-4xl absolute top-2 left-2 opacity-50"></i>
+                        <p id="reflectionQuestion" class="text-sm text-slate-700 italic font-medium relative z-10 pl-6">"Memuat pertanyaan refleksi..."</p>
+                    </div>
+
+                    <!-- Form Input Balasan -->
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">Tim yang Menjawab</label>
+                            <select id="reflectionTeam" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none cursor-pointer">
+                                <!-- Option digenerate oleh JS -->
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">Hasil Diskusi Tim</label>
+                            <textarea id="reflectionAnswer" rows="2" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none resize-none" placeholder="Tuliskan kendala dan solusi yang tim kalian temukan..."></textarea>
+                        </div>
+                        <button onclick="submitReflection()" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2.5 px-4 rounded-lg text-sm shadow-md shadow-teal-200 transition-colors flex justify-center items-center gap-2">
+                            <i class="ph-fill ph-paper-plane-right"></i> Kirim Refleksi (+5 Poin)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kolom Kanan: Leaderboard -->
+        <div class="w-full md:w-7/12">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col h-full">
+                <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-2xl">
+                    <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                        <i class="ph-fill ph-ranking text-amber-500"></i>
+                        Klasemen Taktik
+                    </h2>
+                    <!-- Tombol Laporan -->
+                    <button onclick="openModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md shadow-indigo-200 transition-colors flex items-center gap-2">
+                        <i class="ph ph-plus-circle"></i>
+                        Input Nilai
+                    </button>
+                </div>
+                
+                <div class="p-2">
+                    <!-- Header Tabel -->
+                    <div class="grid grid-cols-12 gap-2 p-3 text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
+                        <div class="col-span-2 text-center">Rank</div>
+                        <div class="col-span-5">Nama Tim</div>
+                        <div class="col-span-3 text-center">Skor</div>
+                        <div class="col-span-2 text-center">Badge</div>
+                    </div>
+                    
+                    <!-- Area List Leaderboard -->
+                    <div id="leaderboardList" class="flex flex-col gap-1 mt-2 relative min-h-[300px]">
+                        <!-- Item akan digenerate oleh JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Input Nilai / Laporan Pandangan Mata (Scouting) -->
+    <div id="scoutModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform scale-95 opacity-0 transition-all duration-300" id="modalContent">
+            
+            <div class="bg-slate-50 p-4 border-b border-slate-100 flex justify-between items-center">
+                <h3 class="font-bold text-lg text-slate-800 flex items-center gap-2">
+                    <i class="ph-fill ph-clipboard-text text-indigo-500"></i>
+                    Input Aksi Tim
+                </h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-700 p-1 bg-slate-200 rounded-full">
+                    <i class="ph ph-x text-lg"></i>
+                </button>
+            </div>
+            
+            <div class="p-5">
+                <!-- Pilih Tim -->
+                <div class="mb-5">
+                    <label class="block text-sm font-bold text-slate-700 mb-2">Pilih Tim</label>
+                    <div class="grid grid-cols-2 gap-2" id="teamSelector">
+                        <!-- Radio buttons digenerate via JS -->
+                    </div>
+                </div>
+
+                <!-- Aksi (Tambah Poin / Badge) -->
+                <div class="mb-5">
+                    <label class="block text-sm font-bold text-slate-700 mb-2">Aksi Taktis</label>
+                    
+                    <button onclick="addScore(10)" class="w-full flex items-center justify-between p-3 rounded-lg border-2 border-indigo-100 hover:border-indigo-500 hover:bg-indigo-50 transition-colors mb-2 text-left group">
+                        <div>
+                            <div class="font-bold text-slate-800 group-hover:text-indigo-700">Berhasil Misi Utama</div>
+                            <div class="text-xs text-slate-500">Mempraktekkan taktik sesuai target</div>
+                        </div>
+                        <span class="bg-indigo-100 text-indigo-700 font-bold px-2 py-1 rounded text-sm">+10 Poin</span>
+                    </button>
+                    
+                    <div class="mt-4">
+                        <label class="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">Berikan Badge Spesial</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button onclick="addBadge('🧠')" class="flex flex-col items-center p-2 rounded border border-slate-200 hover:bg-slate-50 hover:border-amber-400 transition-colors tooltip" title="Tactical Hero: Keputusan pintar">
+                                <span class="text-2xl mb-1">🧠</span>
+                                <span class="text-[10px] font-bold text-slate-600">Taktik</span>
+                            </button>
+                            <button onclick="addBadge('🤝')" class="flex flex-col items-center p-2 rounded border border-slate-200 hover:bg-slate-50 hover:border-emerald-400 transition-colors" title="Fair Play: Kerjasama & Sportif">
+                                <span class="text-2xl mb-1">🤝</span>
+                                <span class="text-[10px] font-bold text-slate-600">Teamwork</span>
+                            </button>
+                            <button onclick="addBadge('⚡')" class="flex flex-col items-center p-2 rounded border border-slate-200 hover:bg-slate-50 hover:border-blue-400 transition-colors" title="Skill Master: Teknik sempurna">
+                                <span class="text-2xl mb-1">⚡</span>
+                                <span class="text-[10px] font-bold text-slate-600">Teknik</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-white/90 backdrop-blur-sm z-[100] flex flex-col items-center justify-center hidden">
+        <i class="ph-fill ph-spinner-gap text-6xl text-indigo-600 animate-spin mb-4"></i>
+        <p class="text-slate-700 font-bold text-sm tracking-wide uppercase">Menyelaraskan Data Guru...</p>
+        <p class="text-slate-500 text-xs mt-2">Menarik materi dari Google Sheets</p>
+    </div>
+
+    <script>
+        // --- 0. KONFIGURASI GOOGLE SHEETS ---
+        // MASUKKAN URL WEB APP GOOGLE APPS SCRIPT BAPAK DI SINI (Di antara tanda kutip):
+        // Contoh: ""
+        const GOOGLE_SHEET_API_URL = "https://script.google.com/macros/s/AKfycbydBmVUDKKRs8VHivdpNYnHTQ412jDtNEFfdE3OypG9FXFtjDmZ7R9YiaE2SZm53VbO/exec"; 
+
+        // --- 1. DATABASE (Lokal / Fallback) ---
+        
+        // Data Materi (Akan tertimpa otomatis jika Google Sheet terhubung)
+        let databaseMateri = {
+            "sepakbola": {
+                nama: "Sepak Bola",
+                misi: "Serangan Operan Segitiga",
+                deskripsi: "Gunakan formasi segitiga untuk membongkar pertahanan lawan. Dilarang menggiring bola lebih dari 3 detik!",
+                taktik: "Pemain tanpa bola HARUS berlari mencari ruang kosong agar teman yang membawa bola memiliki 2 opsi operan.",
+                refleksi: "Apa kesulitan terbesar tim kalian saat dilarang menggiring bola terlalu lama? Bagaimana cara kalian mengatasinya?",
+                videoUrl: "https://www.youtube.com/embed/512Y0z4Pp2w" // Video TGFU Soccer Passing
+            },
+            "basket": {
+                nama: "Bola Basket",
+                misi: "Zona Invasi Tanpa Dribble",
+                deskripsi: "Pindahkan bola dari area pertahanan ke ring lawan murni hanya menggunakan teknik passing (Chest/Bounce/Overhead).",
+                taktik: "Pancing penjaga lawan ke satu sisi, lalu lakukan operan cepat (skip pass) ke sisi yang kosong.",
+                refleksi: "Strategi atau jenis operan apa yang paling sering berhasil tim kalian gunakan untuk menembus pertahanan lawan?",
+                videoUrl: "https://www.youtube.com/embed/uR2i12rW26U" // Video Basket TGFU
+            },
+            "kasti": {
+                nama: "Bola Kasti",
+                misi: "Misi: Base-Runner Cerdas",
+                deskripsi: "Pukul bola menyusur tanah, bukan melambung. Pelari di base harus memutuskan kapan lari atau bertahan.",
+                taktik: "Observasi posisi fielder lawan. Jika bola jauh atau lambat, manfaatkan untuk mencuri base berikutnya.",
+                refleksi: "Kapan waktu yang paling aman untuk memutuskan berlari ke base selanjutnya? Jelaskan alasan timmu!",
+                videoUrl: "https://www.youtube.com/embed/wzXQWk4UqJg" // Video Kasti/Rounders
+            }
+        };
+
+        // Data Tim (Skor dan Badge)
+        let teams = [
+            { id: "t1", name: "Tim Garuda", score: 40, badges: ["🧠", "🤝"] },
+            { id: "t2", name: "Tim Harimau", score: 60, badges: ["⚡"] },
+            { id: "t3", name: "Tim Komodo", score: 30, badges: [] },
+            { id: "t4", name: "Tim Badak", score: 50, badges: ["🤝"] }
+        ];
+
+        // State Aplikasi
+        let currentMateriId = "sepakbola";
+        let selectedTeamIdForAction = null;
+
+        // --- 2. LOGIKA UI (Render Data ke Layar) ---
+        
+        function initApp() {
+            // Isi dropdown materi
+            const selector = document.getElementById('materiSelector');
+            selector.innerHTML = '';
+            for (const key in databaseMateri) {
+                selector.innerHTML += `<option value="${key}">${databaseMateri[key].nama}</option>`;
+            }
+            
+            // Event listener ganti materi
+            selector.addEventListener('change', (e) => {
+                currentMateriId = e.target.value;
+                renderMisi();
+            });
+
+            renderMisi();
+            renderLeaderboard();
+            renderTeamSelector();
+            renderReflectionTeamSelector();
+        }
+
+        function renderMisi() {
+            const materi = databaseMateri[currentMateriId];
+            document.getElementById('missionTitle').innerText = materi.misi;
+            document.getElementById('missionDesc').innerText = materi.deskripsi;
+            document.getElementById('tacticFocus').innerText = materi.taktik;
+            document.getElementById('reflectionQuestion').innerText = `"${materi.refleksi}"`;
+            
+            if (materi.videoUrl) {
+                document.getElementById('videoPlayer').src = materi.videoUrl;
+            }
+        }
+
+        function renderLeaderboard() {
+            const listContainer = document.getElementById('leaderboardList');
+            
+            // Urutkan tim berdasarkan skor tertinggi (Logika Peringkat)
+            teams.sort((a, b) => b.score - a.score);
+            
+            listContainer.innerHTML = '';
+            
+            teams.forEach((team, index) => {
+                const rank = index + 1;
+                
+                // Warna medali untuk top 3
+                let rankStyle = "bg-slate-100 text-slate-500 font-bold";
+                if(rank === 1) rankStyle = "bg-yellow-100 text-yellow-600 border border-yellow-300 shadow-sm shadow-yellow-200";
+                if(rank === 2) rankStyle = "bg-slate-200 text-slate-600 border border-slate-300";
+                if(rank === 3) rankStyle = "bg-orange-100 text-orange-700 border border-orange-300";
+
+                const badgesHtml = team.badges.map(b => `<span class="text-sm bg-slate-100 rounded px-1">${b}</span>`).join('');
+
+                const row = document.createElement('div');
+                row.className = `grid grid-cols-12 gap-2 p-3 items-center bg-white border border-slate-100 rounded-xl mb-2 hover:bg-slate-50 transition-all list-move absolute w-full`;
+                // Menghitung posisi absolut agar ada efek animasi geser saat peringkat berubah
+                row.style.top = `${index * 60}px`; 
+
+                row.innerHTML = `
+                    <div class="col-span-2 flex justify-center">
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm ${rankStyle}">
+                            ${rank}
+                        </div>
+                    </div>
+                    <div class="col-span-5 font-bold text-slate-800 truncate">${team.name}</div>
+                    <div class="col-span-3 text-center">
+                        <span class="bg-indigo-50 text-indigo-700 font-bold px-3 py-1 rounded-full text-sm">${team.score}</span>
+                    </div>
+                    <div class="col-span-2 flex justify-center flex-wrap gap-1">
+                        ${badgesHtml}
+                    </div>
+                `;
+                
+                listContainer.appendChild(row);
+            });
+        }
+
+        // --- 3. LOGIKA INPUT (Modal & Aksi) ---
+
+        function renderTeamSelector() {
+            const container = document.getElementById('teamSelector');
+            container.innerHTML = '';
+            
+            teams.forEach(team => {
+                container.innerHTML += `
+                    <label class="cursor-pointer">
+                        <input type="radio" name="teamSelect" value="${team.id}" class="peer sr-only" onchange="selectedTeamIdForAction = this.value">
+                        <div class="p-3 rounded-xl border-2 border-slate-200 peer-checked:border-indigo-600 peer-checked:bg-indigo-50 text-slate-700 peer-checked:text-indigo-800 font-semibold text-sm transition-all text-center">
+                            ${team.name}
+                        </div>
+                    </label>
+                `;
+            });
+        }
+
+        const modal = document.getElementById('scoutModal');
+        const modalContent = document.getElementById('modalContent');
+
+        function openModal() {
+            selectedTeamIdForAction = null;
+            // Reset radio buttons
+            document.querySelectorAll('input[name="teamSelect"]').forEach(r => r.checked = false);
+            
+            modal.classList.remove('hidden');
+            // Sedikit delay untuk memicu animasi CSS
+            setTimeout(() => {
+                modalContent.classList.remove('scale-95', 'opacity-0');
+                modalContent.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+
+        function closeModal() {
+            modalContent.classList.remove('scale-100', 'opacity-100');
+            modalContent.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMessage').innerText = message;
+            toast.classList.remove('hidden');
+            toast.classList.add('toast-enter');
+            
+            setTimeout(() => {
+                toast.classList.remove('toast-enter');
+                toast.classList.add('hidden');
+            }, 3000);
+        }
+
+        function addScore(points) {
+            if(!selectedTeamIdForAction) {
+                showToast("Pilih tim terlebih dahulu!");
+                document.getElementById('toast').classList.replace('bg-emerald-500', 'bg-rose-500');
+                return;
+            }
+            
+            const teamIndex = teams.findIndex(t => t.id === selectedTeamIdForAction);
+            if(teamIndex > -1) {
+                teams[teamIndex].score += points;
+                closeModal();
+                renderLeaderboard();
+                
+                document.getElementById('toast').classList.replace('bg-rose-500', 'bg-emerald-500');
+                showToast(`+${points} Poin untuk ${teams[teamIndex].name}!`);
+
+                // Sinkron ke Google Sheets
+                syncDataToSheet({
+                    action: "UPDATE_TEAM",
+                    teamId: teams[teamIndex].id,
+                    score: teams[teamIndex].score,
+                    badges: teams[teamIndex].badges
+                });
+            }
+        }
+
+        function addBadge(badgeEmoji) {
+            if(!selectedTeamIdForAction) {
+                showToast("Pilih tim terlebih dahulu!");
+                document.getElementById('toast').classList.replace('bg-emerald-500', 'bg-rose-500');
+                return;
+            }
+
+            const teamIndex = teams.findIndex(t => t.id === selectedTeamIdForAction);
+            if(teamIndex > -1) {
+                teams[teamIndex].badges.push(badgeEmoji);
+                closeModal();
+                renderLeaderboard();
+                
+                document.getElementById('toast').classList.replace('bg-rose-500', 'bg-amber-500');
+                showToast(`Badge ${badgeEmoji} diberikan ke ${teams[teamIndex].name}!`);
+
+                // Sinkron ke Google Sheets
+                syncDataToSheet({
+                    action: "UPDATE_TEAM",
+                    teamId: teams[teamIndex].id,
+                    score: teams[teamIndex].score,
+                    badges: teams[teamIndex].badges
+                });
+            }
+        }
+
+        // Fungsi Render Pilihan Tim untuk Form Refleksi
+        function renderReflectionTeamSelector() {
+            const select = document.getElementById('reflectionTeam');
+            select.innerHTML = '<option value="">-- Pilih Tim Kalian --</option>';
+            teams.forEach(team => {
+                select.innerHTML += `<option value="${team.id}">${team.name}</option>`;
+            });
+        }
+
+        // Fungsi Mengirim Refleksi (Feedback)
+        function submitReflection() {
+            const teamId = document.getElementById('reflectionTeam').value;
+            const answer = document.getElementById('reflectionAnswer').value;
+
+            // Validasi Input
+            if (!teamId) {
+                document.getElementById('toast').classList.replace('bg-emerald-500', 'bg-rose-500');
+                showToast("Pilih nama tim kalian terlebih dahulu!");
+                return;
+            }
+
+            if (answer.trim() === "") {
+                document.getElementById('toast').classList.replace('bg-emerald-500', 'bg-rose-500');
+                showToast("Jawaban hasil diskusi tidak boleh kosong!");
+                return;
+            }
+
+            const teamIndex = teams.findIndex(t => t.id === teamId);
+            if (teamIndex > -1) {
+                // Beri hadiah +5 poin
+                teams[teamIndex].score += 5;
+                
+                // Beri Badge Refleksi (Jurnal) jika belum punya
+                if(!teams[teamIndex].badges.includes('📝')) {
+                    teams[teamIndex].badges.push('📝');
+                }
+                
+                // Update tampilan
+                renderLeaderboard();
+                
+                // Sinkron Refleksi & Update Tim ke Google Sheets
+                syncDataToSheet({
+                    action: "ADD_REFLECTION",
+                    materi: databaseMateri[currentMateriId].nama,
+                    teamId: teams[teamIndex].id,
+                    answer: answer
+                });
+                syncDataToSheet({
+                    action: "UPDATE_TEAM",
+                    teamId: teams[teamIndex].id,
+                    score: teams[teamIndex].score,
+                    badges: teams[teamIndex].badges
+                });
+                
+                // Reset form input
+                document.getElementById('reflectionAnswer').value = "";
+                document.getElementById('reflectionTeam').value = "";
+
+                // Munculkan notifikasi sukses
+                document.getElementById('toast').classList.replace('bg-rose-500', 'bg-emerald-500');
+                showToast(`Keren! +5 Poin & Badge 📝 untuk ${teams[teamIndex].name}`);
+            }
+        }
+
+        // --- 4. KONEKSI GOOGLE SHEETS (API FETCH) ---
+
+        // Fungsi Baru: Mengirim (Simpan) Data ke Google Sheets
+        async function syncDataToSheet(payload) {
+            if (!GOOGLE_SHEET_API_URL || GOOGLE_SHEET_API_URL === "") return; // Skip jika offline
+            
+            const syncStatus = document.getElementById('syncStatus');
+            syncStatus.innerHTML = '<i class="ph-fill ph-spinner-gap animate-spin"></i> Menyimpan...';
+            syncStatus.className = 'flex items-center gap-1 mt-1 text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full w-max transition-all';
+
+            try {
+                // Gunakan text/plain untuk menghindari error CORS preflight dari Google
+                await fetch(GOOGLE_SHEET_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'text/plain;charset=utf-8',
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                // Kembalikan status online setelah berhasil
+                syncStatus.innerHTML = '<i class="ph-fill ph-cloud-check"></i> Tersimpan (Live)';
+                syncStatus.className = 'flex items-center gap-1 mt-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full w-max transition-all';
+            } catch (error) {
+                console.error("Gagal sinkronisasi data:", error);
+                syncStatus.innerHTML = '<i class="ph-fill ph-warning-circle"></i> Gagal Simpan';
+                syncStatus.className = 'flex items-center gap-1 mt-1 text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full w-max transition-all';
+            }
+        }
+
+        async function fetchFromGoogleSheet() {
+            // Jika URL kosong, langsung jalankan pakai data lokal
+            if (!GOOGLE_SHEET_API_URL || GOOGLE_SHEET_API_URL === "") {
+                console.log("Menjalankan aplikasi dengan data lokal (Tanpa Google Sheets).");
+                initApp();
+                return;
+            }
+
+            const loading = document.getElementById('loadingOverlay');
+            loading.classList.remove('hidden');
+            const syncStatus = document.getElementById('syncStatus');
+
+            try {
+                // Proses tarik data dari Google Sheets
+                const response = await fetch(GOOGLE_SHEET_API_URL);
+                const data = await response.json();
+                
+                // Timpa data lokal dengan data dari Spreadsheet
+                if (data.materi && Object.keys(data.materi).length > 0) {
+                    databaseMateri = data.materi;
+                    // Jadikan materi baris pertama di Sheet sebagai default yang tampil
+                    currentMateriId = Object.keys(databaseMateri)[0]; 
+                }
+                if (data.tim && data.tim.length > 0) {
+                    teams = data.tim;
+                }
+                console.log("Berhasil sinkronisasi dari Google Sheets!");
+                
+                // Update UI Indikator Sinkronisasi
+                syncStatus.innerHTML = '<i class="ph-fill ph-cloud-check"></i> Tersambung (Live)';
+                syncStatus.className = 'flex items-center gap-1 mt-1 text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full w-max transition-all';
+                
+            } catch (error) {
+                console.error("Gagal terhubung ke Google Sheets:", error);
+                document.getElementById('toast').classList.replace('bg-emerald-500', 'bg-rose-500');
+                showToast("Gagal sinkronisasi. Memakai data cadangan.");
+                
+                syncStatus.innerHTML = '<i class="ph-fill ph-warning-circle"></i> Offline';
+                syncStatus.className = 'flex items-center gap-1 mt-1 text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full w-max transition-all';
+            } finally {
+                loading.classList.add('hidden');
+                initApp(); // Merender ulang tampilan
+            }
+        }
+
+        // Jalankan aplikasi saat halaman dimuat (Modifikasi dari sebelumnya)
+        window.onload = fetchFromGoogleSheet;
+
+    </script>
+</body>
+</html>
